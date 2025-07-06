@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fast Pi Digit Finder</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 40px;
+      background-color: #f0f0f0;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin: 10px;
+      width: 250px;
+    }
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+    #status {
+      font-size: 14px;
+      color: gray;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>⚡ Fast Pi Digit Finder (API)</h1>
+  <p>Enter a number (1–10 digits) to search in π:</p>
+
+  <input type="text" id="query" maxlength="10" placeholder="e.g. 27182">
+  <br>
+  <button onclick="searchPi()">Search</button>
+
+  <p id="status">Ready</p>
+  <p id="result">...</p>
+
+  <script>
+    async function fetchPi(start, count) {
+      const url = `https://api.pi.delivery/v1/pi?start=${start}&numberOfDigits=${count}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      return data.content;
+    }
+
+    async function searchPi() {
+      const input = document.getElementById("query").value.trim();
+      const resultBox = document.getElementById("result");
+      const statusBox = document.getElementById("status");
+
+      if (!/^\d{1,10}$/.test(input)) {
+        resultBox.innerText = "❌ Enter a number with 1 to 10 digits only.";
+        return;
+      }
+
+      resultBox.innerText = "";
+      statusBox.innerText = "⏳ Searching...";
+
+      const CHUNK_SIZE = 10000; // Faster!
+      const MAX_DIGITS = 100000; // Still responsive
+      let position = 0;
+
+      while (position < MAX_DIGITS) {
+        try {
+          const chunk = await fetchPi(position, CHUNK_SIZE);
+          const foundAt = chunk.indexOf(input);
+
+          if (foundAt !== -1) {
+            resultBox.innerText = `✅ Found "${input}" at position ${position + foundAt + 1} after the decimal.`;
+            statusBox.innerText = "✅ Done";
+            return;
+          }
+        } catch (error) {
+          resultBox.innerText = "❌ Error fetching from API.";
+          console.error(error);
+          return;
+        }
+
+        position += CHUNK_SIZE;
+        statusBox.innerText = `🔄 Checked up to digit ${position.toLocaleString()}`;
+      }
+
+      resultBox.innerText = `😢 "${input}" not found in the first ${MAX_DIGITS.toLocaleString()} digits of π.`;
+      statusBox.innerText = "Search complete.";
+    }
+  </script>
+
+</body>
+</html>
