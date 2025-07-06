@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pi Digit Finder</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f8fa;
+      color: #222;
+      text-align: center;
+      padding: 50px;
+    }
+    h1 {
+      color: #ff6b00;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin: 10px;
+      width: 250px;
+    }
+    #result {
+      font-weight: bold;
+      margin-top: 20px;
+    }
+    #status {
+      font-size: 14px;
+      color: gray;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🔎 Pi Digit Finder</h1>
+  <p>Enter a number (1–10 digits) to search it in π using the Pi Delivery API:</p>
+
+  <input type="text" id="query" maxlength="10" placeholder="e.g. 1415">
+  <br>
+  <button onclick="searchPi()">Search</button>
+
+  <p id="status">Status: Ready</p>
+  <p id="result"></p>
+
+  <script>
+    async function fetchPi(start, count) {
+      const url = `https://api.pi.delivery/v1/pi?start=${start}&numberOfDigits=${count}`;
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) {
+        throw new Error(`API error ${res.status}: ${res.statusText}`);
+      }
+      const data = await res.json();
+      return data.content;
+    }
+
+    async function searchPi() {
+      const input = document.getElementById("query").value.trim();
+      const result = document.getElementById("result");
+      const status = document.getElementById("status");
+
+      if (!/^\d{1,10}$/.test(input)) {
+        result.innerText = "❌ Please enter 1–10 numeric digits.";
+        return;
+      }
+
+      result.innerText = "";
+      status.innerText = "⏳ Searching...";
+
+      const CHUNK_SIZE = 10000;
+      const MAX_DIGITS = 100000;
+      let position = 0;
+
+      try {
+        while (position < MAX_DIGITS) {
+          const digits = await fetchPi(position, CHUNK_SIZE);
+          const index = digits.indexOf(input);
+
+          if (index !== -1) {
+            const foundAt = position + index + 1;
+            result.innerText = `✅ Found "${input}" at position ${foundAt} after the decimal.`;
+            status.innerText = "✅ Search complete.";
+            return;
+          }
+
+          position += CHUNK_SIZE;
+          status.innerText = `🔄 Checked up to digit ${position.toLocaleString()}...`;
+        }
+
+        result.innerText = `❌ Not found in the first ${MAX_DIGITS.toLocaleString()} digits of π.`;
+        status.innerText = "🔍 Search complete.";
+      } catch (error) {
+        result.innerText = `❌ Error: ${error.message}`;
+        status.innerText = "❌ Failed to fetch from the API.";
+        console.error("Fetch error:", error);
+      }
+    }
+  </script>
+
+</body>
+</html>
